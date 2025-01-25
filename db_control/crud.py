@@ -10,7 +10,7 @@ import json
 import pandas as pd
 
 from db_control.connect import engine
-from db_control.mymodels import Customers
+from db_control.mymodels_MySQL import Product
 
 
 def myinsert(mymodel, values):
@@ -33,7 +33,7 @@ def myinsert(mymodel, values):
     return "inserted"
 
 
-def myselect(mymodel, customer_id):
+def myselect(mymodel_, customer_id):
     # session構築
     Session = sessionmaker(bind=engine)
     session = Session()
