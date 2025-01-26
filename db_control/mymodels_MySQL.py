@@ -5,7 +5,7 @@ from datetime import datetime
 Base = declarative_base()
 
 class Product(Base):
-    __tablename__ = 'products'
+    __tablename__ = 'm_product_iwamu'
 
     PRD_ID = Column(Integer, primary_key=True, autoincrement=True)  # Product ID
     CODE = Column(String(13), unique=True, nullable=False)  # Product Code (Unique)
@@ -17,7 +17,7 @@ class Product(Base):
 
 
 class Transaction(Base):
-    __tablename__ = 'transactions'
+    __tablename__ = 'transactions_iwamu'
 
     TRD_ID = Column(Integer, primary_key=True, autoincrement=True)  # Transaction ID
     DATETIME = Column(DateTime, default=datetime.utcnow, nullable=False)  # Transaction DateTime
@@ -33,11 +33,11 @@ class Transaction(Base):
 
 
 class TransactionDetail(Base):
-    __tablename__ = 'transaction_details'
+    __tablename__ = 'transaction_details_iwamu'
 
     DTL_ID = Column(Integer, primary_key=True, autoincrement=True)  # Detail ID
-    TRD_ID = Column(Integer, ForeignKey('transactions.TRD_ID', ondelete="CASCADE"), nullable=False)  # Transaction ID (Foreign Key)
-    PRD_ID = Column(Integer, ForeignKey('products.PRD_ID', ondelete="CASCADE"), nullable=False)  # Product ID (Foreign Key)
+    TRD_ID = Column(Integer, ForeignKey('transactions_iwamu.TRD_ID', ondelete="CASCADE"), nullable=False)  # Transaction ID (Foreign Key)
+    PRD_ID = Column(Integer, ForeignKey('m_product_iwamu.PRD_ID', ondelete="CASCADE"), nullable=False)  # Product ID (Foreign Key)
     PRD_CODE = Column(String(13), nullable=False)  # Product Code
     PRD_NAME = Column(String(50), nullable=False)  # Product Name
     PRD_PRICE = Column(Integer, nullable=False)  # Product Price

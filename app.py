@@ -4,12 +4,16 @@ from pydantic import BaseModel
 import requests
 import json
 from db_control import crud, mymodels_MySQL
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 
 # MySQLのテーブル作成
-# from db_control.create_tables import init_db
+from db_control.create_tables_MySQL import init_db
 
 # # アプリケーション初期化時にテーブルを作成
-# init_db()
+init_db()
 
 
 class Customer(BaseModel):
@@ -35,7 +39,7 @@ app.add_middleware(
 def db_read(itemCode: int = Query(...)):
     result = crud.myselect(mymodels_MySQL.Product, itemCode)
     if not result:
-        raise HTTPException(status_code=404, detail="商品がマスタ未登録です")
+        raise HTTPException(status_code=404, detail="商品マスタ未登録です")
     result_obj = json.loads(result)
     return result_obj[0] if result_obj else None
 
