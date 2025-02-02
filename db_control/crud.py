@@ -65,7 +65,7 @@ def insertDetails(detail_data):
         raise
 
 def insetTotalamt(TOTAL_AMT, TRD_ID):
-    query = insert(Transaction.TOTAL_AMT).values(TOTAL_AMT).where(Transaction.TRD_ID == TRD_ID)
+    query = update(Transaction).where(Transaction.TRD_ID == TRD_ID).values(TOTAL_AMT = TOTAL_AMT)
     try:
         with session_scope() as session:
             session.execute(query)

@@ -73,8 +73,8 @@ async def add_db(request: Request):
                 TOTAL_AMT =crud.insertDetails(detail_data)
             print(TOTAL_AMT)
             print(TRD_ID)
-            
-        return {"message": "投稿が成功しました！"}, 201
+            crud.insetTotalamt(TOTAL_AMT, TRD_ID)
+        return {f"購入金額：{TOTAL_AMT}"}, 201
     except Exception as e:
         print(f"エラー: {e}")
         return {"error": f"投稿に失敗しました: {str(e)}"}, 500
