@@ -11,8 +11,8 @@ import pandas as pd
 from contextlib import contextmanager
 
 from db_control.connect_MySQL import engine
-from db_control import mymodels_MySQL
-from db_control.mymodels_MySQL import Product, Transaction, TransactionDetail
+from . import mymodels_MySQL
+from .mymodels_MySQL import Product, Transaction, TransactionDetail
 
 Session = sessionmaker(bind=engine)
 
