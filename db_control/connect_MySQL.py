@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 from urllib.parse import quote_plus
 
 # 環境変数の読み込み
-load_dotenv(dotenv_path="/Users/iwamurahayato/myproject/Step4_POS-app_backend/.env.local")
+load_dotenv()
 
 # 必須の環境変数を取得
 def get_env_variable(key: str) -> str:
@@ -24,7 +24,7 @@ DB_PORT = get_env_variable('DB_PORT')
 DB_NAME = get_env_variable('DB_NAME')
 
 # SSL証明書のパス
-SSL_CERT_PATH = os.getenv('SSL_CERT_PATH')
+SSL_CERT_PATH = os.getenv('SSL_CERT_PATH', '/etc/ssl/certs/ca-certificates.crt')
 if not SSL_CERT_PATH:
     print("Warning: SSL_CERT_PATH is not set.")
 
@@ -32,7 +32,7 @@ if not SSL_CERT_PATH:
 print("Encoded DB_PASSWORD:", DB_PASSWORD)
 
 # MySQLのURL構築
-DATABASE_URL = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+DATABASE_URL = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}?ssl_ca={SSL_CERT_PATH}"
 
 # エンジンの作成
 engine = create_engine(
