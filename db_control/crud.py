@@ -12,7 +12,7 @@ from contextlib import contextmanager
 
 from db_control.connect_MySQL import engine
 from . import mymodels_MySQL
-from .mymodels_MySQL import Product, Transaction, TransactionDetail
+from .mymodels_MySQL import Product, Transaction, TransactionDetail, Tax
 
 Session = sessionmaker(bind=engine)
 
@@ -52,24 +52,32 @@ def insertTransaction(transaction_data):
         raise
 
 def insertDetails(detail_data):
-    query = insert(TransactionDetail).values(detail_data)
+    insert_query = insert(TransactionDetail).values(detail_data)
+    get_tax_percent_query = select(Tax.PERCENT).where(Tax.TAX_CD == detail_data["TAX_CD"])
+    # get_total_amt_query = select(func.sum(TransactionDetail.PRD_PRICE)).where(TransactionDetail.TRD_ID == detail_data["TRD_ID"])
     try:
         with session_scope() as session:
-            session.execute(query)
-            get_total_amt_query = select(func.sum(TransactionDetail.PRD_PRICE)).where(TransactionDetail.TRD_ID == detail_data["TRD_ID"])
-            TOTAL_AMT = session.execute(get_total_amt_query).scalar()
-            return TOTAL_AMT
+            session.execute(insert_query)
+            TAX_PERCENT = session.execute(get_tax_percent_query).scalar()
+            PRD_PRICE_with_TAX = detail_data["PRD_PRICE"]*(1 + TAX_PERCENT) #税込単価を計算
+            # PRD_PRICE = detail_data["PRD_PRICE"]
+            # TOTAL_AMT = session.execute(get_total_amt_query).scalar()
+            return PRD_PRICE_with_TAX
     except sqlalchemy.exc.IntegrityError as e:
         print(f"TransactionDetail：一意制約違反により、挿入に失敗しました: {e}")
         # 一意制約とはデータが重複を許可していないということ
         raise
 
-def insetTotalamt(TOTAL_AMT, TRD_ID):
-    query = update(Transaction).where(Transaction.TRD_ID == TRD_ID).values(TOTAL_AMT = TOTAL_AMT)
+def insetTotalamt(TOTAL_AMT, TRD_ID, TTL_AMT_EX_TAX):
+    query_TOTAL_AMT = update(Transaction).where(Transaction.TRD_ID == TRD_ID).values(TOTAL_AMT = TOTAL_AMT)
+    query_TTL_AMT_EX_TAX = update(Transaction).where(Transaction.TRD_ID == TRD_ID).values(TTL_AMT_EX_TAX = TTL_AMT_EX_TAX)
+    query_get_TTL_AMT = select(Transaction.TOTAL_AMT).where(Transaction.TRD_ID == TRD_ID)
     try:
         with session_scope() as session:
-            session.execute(query)
-            return 
+            session.execute(query_TOTAL_AMT)
+            session.execute(query_TTL_AMT_EX_TAX)
+            TTL_AMT = session.execute(query_get_TTL_AMT).scalar()
+            return TTL_AMT
     except sqlalchemy.exc.IntegrityError as e:
         print(f"TOTAL_AMTの挿入に失敗しました: {e}")
         raise
@@ -82,6 +90,10 @@ def myselect(mymodels_MySQL, CODE):
             # クエリを実行して結果を取得
             result = session.execute(query).scalars().all()
             print(f"Query result: {result}")
+
+            if not result:
+                print(f"{CODE}は登録されていない商品です。")
+                return None
 
             # 結果をオブジェクトから辞書に変換し、リストに追加
             result_dict_list = [

@@ -39,10 +39,10 @@ app.add_middleware(
 @app.get("/api/read")
 def db_read(itemCode: int = Query(...)):
     result = crud.myselect(mymodels_MySQL.Product, itemCode)
-    if not result:
-        raise HTTPException(status_code=404, detail="商品マスタ未登録です")
+    if result is None:
+        return {"message": "商品マスタ未登録です"}
     result_obj = json.loads(result)
-    return result_obj[0] if result_obj else None
+    return result_obj[0] if result_obj else {"message": "商品マスタ未登録です"}
 
 @app.post("/api/purchase")
 async def add_db(request: Request):
@@ -54,8 +54,12 @@ async def add_db(request: Request):
             "EMP_CD": values["EMP_info"]["EMP_CD"],
             "STORE_CD": values["EMP_info"]["STORE_CD"],
             "POS_NO": values["EMP_info"]["POS_NO"],
-            "TOTAL_AMT": 0
+            "TOTAL_AMT": 0,
+            "TTL_AMT_EX_TAX": 0
         }]
+    TOTAL_AMT = transaction_data[0]["TOTAL_AMT"]
+    TTL_AMT_EX_TAX = transaction_data[0]["TTL_AMT_EX_TAX"]
+
     print("Received values:", values)
     print("transaction_data:", transaction_data)
     try:
@@ -67,13 +71,17 @@ async def add_db(request: Request):
                         "PRD_ID": item["PRD_ID"],
                         "PRD_CODE": item["CODE"],
                         "PRD_NAME": item["NAME"],
-                        "PRD_PRICE": item["PRICE"]
+                        "PRD_PRICE": item["PRICE"],
+                        "TAX_CD": 10
                         }
-                TOTAL_AMT =crud.insertDetails(detail_data)
-            print(TOTAL_AMT)
+                PRD_PRICE_with_TAX =crud.insertDetails(detail_data)
+                TOTAL_AMT += PRD_PRICE_with_TAX
+                TTL_AMT_EX_TAX += detail_data["PRD_PRICE"]
             print(TRD_ID)
-            crud.insetTotalamt(TOTAL_AMT, TRD_ID)
-        return {f"購入金額：{TOTAL_AMT}"}, 201
+            print(TOTAL_AMT)
+            print(TTL_AMT_EX_TAX)
+            TTL_AMT = crud.insetTotalamt(TOTAL_AMT, TRD_ID, TTL_AMT_EX_TAX)
+        return {f"購入金額(税込)：{TTL_AMT}"}, 201
     except Exception as e:
         print(f"エラー: {e}")
         return {"error": f"投稿に失敗しました: {str(e)}"}, 500

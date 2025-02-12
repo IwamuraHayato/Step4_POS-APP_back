@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, DECIMAL
 from sqlalchemy.orm import relationship, declarative_base
 from datetime import datetime
 
@@ -25,7 +25,7 @@ class Transaction(Base):
     STORE_CD = Column(String(5), nullable=True)  # Store Code
     POS_NO = Column(String(3), nullable=True)  # POS Machine ID
     TOTAL_AMT = Column(Integer, nullable=False)  # Total Amount
-
+    TTL_AMT_EX_TAX = Column(Integer, nullable=True)  # Total AmountEX_TAX
     details = relationship("TransactionDetail", back_populates="transaction", cascade="all, delete-orphan")
 
     def __repr__(self):
@@ -41,9 +41,21 @@ class TransactionDetail(Base):
     PRD_CODE = Column(String(13), nullable=False)  # Product Code
     PRD_NAME = Column(String(50), nullable=False)  # Product Name
     PRD_PRICE = Column(Integer, nullable=False)  # Product Price
-
+    TAX_CD =  Column(String(2), nullable=False)
     transaction = relationship("Transaction", back_populates="details")
     product = relationship("Product")
 
     def __repr__(self):
         return f"<TransactionDetail(DTL_ID={self.DTL_ID}, PRD_NAME={self.PRD_NAME}, PRD_PRICE={self.PRD_PRICE})>"
+
+
+class Tax(Base):
+    __tablename__ = 'tax_master_iwamu'
+
+    ID = Column(Integer, primary_key=True, autoincrement=True)
+    TAX_CD = Column(String(2), unique=True, nullable=False)
+    TAX_NAME = Column(String(20), nullable=False)
+    PERCENT = Column(DECIMAL(5,2), nullable=False)
+
+    def __repr__(self):
+        return f"<TaxMaster(ID={self.ID}, CODE={self.CODE}, NAME={self.NAME}, PERCENT={self.PERCENT})>"
