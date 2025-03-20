@@ -12,7 +12,7 @@ from contextlib import contextmanager
 
 from db_control.connect_MySQL import engine
 from . import mymodels_MySQL
-from .mymodels_MySQL import Product, Transaction, TransactionDetail, Tax
+from .mymodels_MySQL import Family, FamilyRelationship, Area, User, UserTag, Tag, Store, Event, EventTag, TransactionType, PointTransaction
 
 Session = sessionmaker(bind=engine)
 
@@ -35,6 +35,31 @@ def session_scope():
         session.close()  # 最後にセッションをクローズ
 
     """指定したモデルの最後に挿入された ID を取得"""
+
+def selectEvent(store_id):
+    query = select(mymodels_MySQL.Event).where(mymodels_MySQL.Event.store_id == store_id)
+    try:
+        with session_scope() as session:
+            result = session.execute(query).scalars().all()
+            print(f"Query result: {result}")
+            # 結果をオブジェクトから辞書に変換し、リストに追加
+            result_dict_eventlist = [
+                {
+                    "event_id": event_info.event_id,
+                    "event_name": event_info.event_name,
+                    "event_date": event_info.event_date.strftime("%Y-%m-%d"),
+                    "start_at": str(event_info.start_at), 
+                    "end_at": str(event_info.end_at),
+                    "description": event_info.description,
+                    "store_id": event_info.store_id
+                }
+                for event_info in result
+            ]
+            return result_dict_eventlist
+    except Exception as e:
+            print(f"エラー: {e}")
+            return None
+
 def get_last_inserted_id(session, model):
     return session.execute(
         select(model.TRD_ID).order_by(model.TRD_ID.desc()).limit(1)
@@ -81,7 +106,6 @@ def insetTotalamt(TOTAL_AMT, TRD_ID, TTL_AMT_EX_TAX):
     except sqlalchemy.exc.IntegrityError as e:
         print(f"TOTAL_AMTの挿入に失敗しました: {e}")
         raise
-
 
 def myselect(mymodels_MySQL, CODE):
     query = select(mymodels_MySQL).where(mymodels_MySQL.CODE == CODE)

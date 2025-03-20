@@ -4,7 +4,7 @@ from pydantic import BaseModel
 import requests
 import json
 from db_control import crud, mymodels_MySQL
-from db_control.crud import insertTransaction
+# from db_control.crud import insertTransaction
 from dotenv import load_dotenv
 import os
 from datetime import datetime
@@ -17,13 +17,6 @@ from db_control.create_tables_MySQL import init_db
 # # アプリケーション初期化時にテーブルを作成
 init_db()
 
-
-class Customer(BaseModel):
-    customer_id: str
-    customer_name: str
-    age: int
-    gender: str
-
 app = FastAPI()
 
 # CORSミドルウェアの設定
@@ -35,7 +28,37 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.get("/")
+def index():
+    return {"message": "FastAPI top page!!"}
 
+
+@app.get("/event")
+def db_read(store_id: int = Query(...)):
+    event_list = crud.selectEvent(store_id)
+    print("Received event_list:")
+    if not event_list:
+        return {"message": "開催予定のイベントはありません"}
+    return event_list
+
+@app.post("/event-register")
+async def add_event(requsest: Request):
+    values = await requsest.json()
+    event_data = [
+        "event_name": values[],
+        "event_date": values[],
+        "start_at": values[],
+        "end_at": values[],
+        "description": values[],
+        "store_id": values[]
+    ]
+    tag_data = [
+        #  選択されたタグを入力
+     ]
+
+    return
+
+# 以下POSAPP用のエンドポイント
 @app.get("/api/read")
 def db_read(itemCode: int = Query(...)):
     result = crud.myselect(mymodels_MySQL.Product, itemCode)
@@ -87,9 +110,6 @@ async def add_db(request: Request):
         return {"error": f"投稿に失敗しました: {str(e)}"}, 500
 
 
-@app.get("/")
-def index():
-    return {"message": "FastAPI top page!!"}
 
 
 # @app.post("/customers")

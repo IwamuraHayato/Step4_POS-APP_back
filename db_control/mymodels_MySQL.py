@@ -1,61 +1,161 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, DECIMAL
+from sqlalchemy import Column, Integer, String, ForeignKey, Date, Enum, TIMESTAMP, Text
 from sqlalchemy.orm import relationship, declarative_base
 from datetime import datetime
 
 Base = declarative_base()
 
-class Product(Base):
-    __tablename__ = 'm_product_iwamu'
+# Families テーブル
+class Family(Base):
+    __tablename__ = 'Families'
 
-    PRD_ID = Column(Integer, primary_key=True, autoincrement=True)  # Product ID
-    CODE = Column(String(13), unique=True, nullable=False)  # Product Code (Unique)
-    NAME = Column(String(50), nullable=False)  # Product Name
-    PRICE = Column(Integer, nullable=False)  # Product Price
-
-    def __repr__(self):
-        return f"<Product(PRD_ID={self.PRD_ID}, NAME={self.NAME}, PRICE={self.PRICE})>"
-
-
-class Transaction(Base):
-    __tablename__ = 'transactions_iwamu'
-
-    TRD_ID = Column(Integer, primary_key=True, autoincrement=True)  # Transaction ID
-    DATETIME = Column(DateTime, default=datetime.utcnow, nullable=False)  # Transaction DateTime
-    EMP_CD = Column(String(10), nullable=True)  # Employee Code
-    STORE_CD = Column(String(5), nullable=True)  # Store Code
-    POS_NO = Column(String(3), nullable=True)  # POS Machine ID
-    TOTAL_AMT = Column(Integer, nullable=False)  # Total Amount
-    TTL_AMT_EX_TAX = Column(Integer, nullable=True)  # Total AmountEX_TAX
-    details = relationship("TransactionDetail", back_populates="transaction", cascade="all, delete-orphan")
+    family_id = Column(Integer, primary_key=True, autoincrement=True)
+    family_name = Column(String(255), nullable=False)
+    users = relationship("User", back_populates="family")
 
     def __repr__(self):
-        return f"<Transaction(TRD_ID={self.TRD_ID}, DATETIME={self.DATETIME})>"
+        return f"<Family(family_id={self.family_id}, family_name={self.family_name})>"
 
+# FamilyRelationship テーブル
+class FamilyRelationship(Base):
+    __tablename__ = 'FamilyRelationship'
 
-class TransactionDetail(Base):
-    __tablename__ = 'transaction_details_iwamu'
-
-    DTL_ID = Column(Integer, primary_key=True, autoincrement=True)  # Detail ID
-    TRD_ID = Column(Integer, ForeignKey('transactions_iwamu.TRD_ID', ondelete="CASCADE"), nullable=False)  # Transaction ID (Foreign Key)
-    PRD_ID = Column(Integer, ForeignKey('m_product_iwamu.PRD_ID', ondelete="CASCADE"), nullable=False)  # Product ID (Foreign Key)
-    PRD_CODE = Column(String(13), nullable=False)  # Product Code
-    PRD_NAME = Column(String(50), nullable=False)  # Product Name
-    PRD_PRICE = Column(Integer, nullable=False)  # Product Price
-    TAX_CD =  Column(String(2), nullable=False)
-    transaction = relationship("Transaction", back_populates="details")
-    product = relationship("Product")
+    relationship_id = Column(Integer, primary_key=True, autoincrement=True)
+    relationship_type = Column(String(50), nullable=False)
+    users = relationship("User", back_populates="relation")
 
     def __repr__(self):
-        return f"<TransactionDetail(DTL_ID={self.DTL_ID}, PRD_NAME={self.PRD_NAME}, PRD_PRICE={self.PRD_PRICE})>"
+        return f"<FamilyRelationship(relationship_id={self.relationship_id}, relationship_type={self.relationship_type})>"
 
+# Area テーブル
+class Area(Base):
+    __tablename__ = 'Area'
 
-class Tax(Base):
-    __tablename__ = 'tax_master_iwamu'
-
-    ID = Column(Integer, primary_key=True, autoincrement=True)
-    TAX_CD = Column(String(2), unique=True, nullable=False)
-    TAX_NAME = Column(String(20), nullable=False)
-    PERCENT = Column(DECIMAL(5,2), nullable=False)
+    area_id = Column(Integer, primary_key=True, autoincrement=True)
+    area_name = Column(String(255), unique=True, nullable=False)
+    users = relationship("User", back_populates="area")
 
     def __repr__(self):
-        return f"<TaxMaster(ID={self.ID}, CODE={self.CODE}, NAME={self.NAME}, PERCENT={self.PERCENT})>"
+        return f"<Area(area_id={self.area_id}, area_name={self.area_name})>"
+
+# Users テーブル
+class User(Base):
+    __tablename__ = 'Users'
+
+    user_id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(255), nullable=False)
+    password = Column(String(255), nullable=False)
+    family_id = Column(Integer, ForeignKey('Families.family_id', ondelete="SET NULL"))
+    relationship_id = Column(Integer, ForeignKey('FamilyRelationship.relationship_id', ondelete="SET NULL"))
+    birth_date = Column(Date, nullable=False)
+    gender = Column(Enum('M', 'F'), nullable=False)
+    area_id = Column(Integer, ForeignKey('Area.area_id', ondelete="SET NULL"))
+    created_at = Column(TIMESTAMP, default=datetime.utcnow)
+
+    family = relationship("Family", back_populates="users")
+    relation = relationship("FamilyRelationship", back_populates="users")
+    area = relationship("Area", back_populates="users")
+    tags = relationship("UserTag", back_populates="user")
+
+    def __repr__(self):
+        return f"<User(user_id={self.user_id}, name={self.name}, gender={self.gender}, birth_date={self.birth_date})>"
+
+# UserTags (ユーザーとタグの中間テーブル)
+class UserTag(Base):
+    __tablename__ = 'UserTags'
+
+    user_tag_id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey('Users.user_id', ondelete="CASCADE"), nullable=False)
+    tag_id = Column(Integer, ForeignKey('Tags.tag_id', ondelete="CASCADE"), nullable=False)
+
+    user = relationship("User", back_populates="tags")
+    tag = relationship("Tag", back_populates="users")
+
+    def __repr__(self):
+        return f"<UserTag(user_tag_id={self.user_tag_id}, user_id={self.user_id}, tag_id={self.tag_id})>"
+
+# Tags (タグ管理)
+class Tag(Base):
+    __tablename__ = 'Tags'
+
+    tag_id = Column(Integer, primary_key=True, autoincrement=True)
+    tag_name = Column(String(255), unique=True, nullable=False)
+
+    users = relationship("UserTag", back_populates="tag")
+    events = relationship("EventTag", back_populates="tag")
+
+    def __repr__(self):
+        return f"<Tag(tag_id={self.tag_id}, tag_name={self.tag_name})>"
+
+# Stores (店舗管理)
+class Store(Base):
+    __tablename__ = 'Stores'
+
+    store_id = Column(Integer, primary_key=True, autoincrement=True)
+    store_name = Column(String(255), unique=True, nullable=False)
+    created_at = Column(TIMESTAMP, default=datetime.utcnow)
+
+    events = relationship("Event", back_populates="store")
+    transactions = relationship("PointTransaction", back_populates="store")
+
+    def __repr__(self):
+        return f"<Store(store_id={self.store_id}, store_name={self.store_name})>"
+
+# Events (イベント管理)
+class Event(Base):
+    __tablename__ = 'Events'
+
+    event_id = Column(Integer, primary_key=True, autoincrement=True)
+    event_name = Column(String(255), nullable=False)
+    event_date = Column(Date, nullable=False)
+    start_at = Column(String(5), nullable=False)
+    end_at = Column(String(5), nullable=False)
+    description = Column(Text, nullable=False)
+    store_id = Column(Integer, ForeignKey('Stores.store_id', ondelete="CASCADE"))
+
+    store = relationship("Store", back_populates="events")
+    tags = relationship("EventTag", back_populates="event")
+
+    def __repr__(self):
+        return f"<Event(event_id={self.event_id}, event_name={self.event_name})>"
+
+# EventTags (イベントとタグの中間テーブル)
+class EventTag(Base):
+    __tablename__ = 'EventTags'
+
+    event_tag_id = Column(Integer, primary_key=True, autoincrement=True)
+    event_id = Column(Integer, ForeignKey('Events.event_id', ondelete="CASCADE"), nullable=False)
+    tag_id = Column(Integer, ForeignKey('Tags.tag_id', ondelete="CASCADE"), nullable=False)
+
+    event = relationship("Event", back_populates="tags")
+    tag = relationship("Tag", back_populates="events")
+
+    def __repr__(self):
+        return f"<EventTag(event_tag_id={self.event_tag_id}, event_id={self.event_id}, tag_id={self.tag_id})>"
+
+# TransactionType (トランザクション種別)
+class TransactionType(Base):
+    __tablename__ = 'Transaction_type'
+
+    transaction_type_id = Column(Integer, primary_key=True, autoincrement=True)
+    transaction_type = Column(String(50), unique=True, nullable=False)
+
+    def __repr__(self):
+        return f"<TransactionType(transaction_type_id={self.transaction_type_id}, transaction_type={self.transaction_type})>"
+
+# PointTransaction (ポイント取引)
+class PointTransaction(Base):
+    __tablename__ = 'PointTransaction'
+
+    transaction_id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey('Users.user_id', ondelete="SET NULL"))
+    store_id = Column(Integer, ForeignKey('Stores.store_id', ondelete="CASCADE"))
+    transaction_type_id = Column(Integer, ForeignKey('Transaction_type.transaction_type_id', ondelete="CASCADE"))
+    point = Column(Integer, nullable=False)
+    transaction_at = Column(TIMESTAMP, default=datetime.utcnow)
+
+    user = relationship("User")
+    store = relationship("Store", back_populates="transactions")
+    transaction_type = relationship("TransactionType")
+
+    def __repr__(self):
+        return f"<PointTransaction(transaction_id={self.transaction_id}, point={self.point})>"
