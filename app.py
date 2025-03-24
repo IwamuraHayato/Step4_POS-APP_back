@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import requests
 import json
@@ -42,21 +43,30 @@ def db_read(store_id: int = Query(...)):
     return event_list
 
 @app.post("/event-register")
-async def add_event(requsest: Request):
-    values = await requsest.json()
-    event_data = [
-        "event_name": values[],
-        "event_date": values[],
-        "start_at": values[],
-        "end_at": values[],
-        "description": values[],
-        "store_id": values[]
-    ]
-    tag_data = [
-        #  選択されたタグを入力
-     ]
+async def add_event(request: Request):
+    form = await request.form()
+    print("Received values:", form)
+    try:
+        event_data = [{
+            "event_name": form["eventName"],
+            "event_date": form["startDate"],
+            # "end_date": form["endDate"], 書き込み保留
+            "start_at": form["startTime"],
+            "end_at": form["endTime"],
+            "description": form["description"],
+            "store_id": int(form["store_id"])
+        }]
+        print("event_data:", event_data)
+        event_tags = form.getlist("tags[]")
+        print("tags:", event_tags)
 
-    return
+        event_id = crud.insertEvent(event_data)
+        crud.insertEventTag(event_id, event_tags)
+
+        return {"message": "イベント登録成功！"}
+    except Exception as e:
+        print(f"エラー: {e}")
+        return {"error": f"投稿に失敗しました: {str(e)}"}, 500
 
 # 以下POSAPP用のエンドポイント
 @app.get("/api/read")

@@ -59,6 +59,29 @@ def selectEvent(store_id):
     except Exception as e:
             print(f"エラー: {e}")
             return None
+    
+def insertEvent(event_data):
+    query = insert(Event).values(event_data)
+    try:
+        with session_scope() as session:
+            result = session.execute(query)
+            session.flush() 
+            event_id = result.inserted_primary_key[0]
+            return event_id
+    except sqlalchemy.exc.IntegrityError as e:
+        print(f"Transaction：一意制約違反により、挿入に失敗しました: {e}")
+        raise
+
+def insertEventTag(event_id, tag_ids):
+    try:
+        with session_scope() as session:
+            for tag_id in tag_ids:
+                event_tag = EventTag(event_id=event_id, tag_id=int(tag_id))
+                session.add(event_tag)
+    except Exception as e:
+        print(f"EventTag の挿入に失敗しました: {e}")
+        raise
+
 
 def get_last_inserted_id(session, model):
     return session.execute(
