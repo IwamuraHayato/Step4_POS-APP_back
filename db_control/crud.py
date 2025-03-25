@@ -82,6 +82,81 @@ def insertEventTag(event_id, tag_ids):
         print(f"EventTag の挿入に失敗しました: {e}")
         raise
 
+def getuserById(user_id):
+    query = select(mymodels_MySQL.User).where(mymodels_MySQL.User.user_id == user_id)
+    try:
+        with session_scope() as session:
+            user_info = session.execute(query).scalars().first()
+            if user_info:
+                points = getTotalPointsByUserId(user_info.user_id)
+                return {
+                    "user_id": user_info.user_id,
+                    "name": user_info.name,
+                    "birth_date": str(user_info.birth_date),
+                    "gender": user_info.gender,
+                    "area_id": user_info.area_id,
+                    "points": points 
+                }
+            return None
+    except sqlalchemy.exc.IntegrityError as e:
+        print(f"Transaction：一意制約違反により、挿入に失敗しました: {e}")
+        raise
+
+def getTotalPointsByUserId(user_id: int):
+    try:
+        with session_scope() as session:
+            total_points = session.query(func.coalesce(func.sum(PointTransaction.point), 0)) \
+                .filter(PointTransaction.user_id == user_id) \
+                .scalar()
+            return total_points
+    except Exception as e:
+        print(f"ポイント合計取得エラー: {e}")
+        raise
+
+def insertUserAndStoreTransaction(data):
+    with session_scope() as session:
+        # typeに応じて対応する2つのタイプを決定
+        if data.type == "earn":
+            user_type = "earn"
+            store_type = "grant"
+            user_point = data.point
+            store_point = -data.point
+        elif data.type == "use":
+            user_type = "use"
+            store_type = "collect"
+            user_point = -data.point
+            store_point = data.point
+        else:
+            raise Exception("不正なトランザクションタイプです")
+
+        # トランザクション種別ID取得
+        def get_type_id(t_type):
+            result = session.execute(
+                select(TransactionType.transaction_type_id).where(TransactionType.transaction_type == t_type)
+            ).scalar()
+            if not result:
+                raise Exception(f"{t_type} のtransaction_typeが見つかりません")
+            return result
+
+        user_transaction = PointTransaction(
+            user_id=data.user_id,
+            store_id=data.store_id,
+            point=user_point,
+            transaction_type_id=get_type_id(user_type),
+            transaction_at=datetime.utcnow()
+        )
+
+        store_transaction = PointTransaction(
+            user_id=None,
+            store_id=data.store_id,
+            point=store_point,
+            transaction_type_id=get_type_id(store_type),
+            transaction_at=datetime.utcnow()
+        )
+
+        session.add_all([user_transaction, store_transaction])
+
+
 
 def get_last_inserted_id(session, model):
     return session.execute(

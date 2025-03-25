@@ -68,6 +68,30 @@ async def add_event(request: Request):
         print(f"エラー: {e}")
         return {"error": f"投稿に失敗しました: {str(e)}"}, 500
 
+@app.get("/users/{user_id}")
+def get_customer(user_id: str):
+    user_info = crud.getuserById(user_id)
+    if not user_info:
+        raise HTTPException(status_code=404, detail="顧客が見つかりません")
+    return user_info
+
+class PointTransactionRequest(BaseModel):
+    user_id: int
+    store_id: int
+    point: int
+    type: str
+
+@app.post("/points/transaction")
+def record_transaction(data: PointTransactionRequest):
+    print(data)
+    try:
+        crud.insertUserAndStoreTransaction(data)
+        return {"message": f"{data.type} トランザクションを登録しました"}
+    except Exception as e:
+        print(f"エラー: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # 以下POSAPP用のエンドポイント
 @app.get("/api/read")
 def db_read(itemCode: int = Query(...)):
