@@ -142,16 +142,14 @@ def insertUserAndStoreTransaction(data):
             user_id=data.user_id,
             store_id=data.store_id,
             point=user_point,
-            transaction_type_id=get_type_id(user_type),
-            transaction_at=datetime.utcnow()
+            transaction_type_id=get_type_id(user_type)
         )
 
         store_transaction = PointTransaction(
             user_id=None,
             store_id=data.store_id,
             point=store_point,
-            transaction_type_id=get_type_id(store_type),
-            transaction_at=datetime.utcnow()
+            transaction_type_id=get_type_id(store_type)
         )
 
         session.add_all([user_transaction, store_transaction])

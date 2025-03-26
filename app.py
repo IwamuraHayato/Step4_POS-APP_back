@@ -67,6 +67,39 @@ async def add_event(request: Request):
     except Exception as e:
         print(f"エラー: {e}")
         return {"error": f"投稿に失敗しました: {str(e)}"}, 500
+    
+# def save_images(files, post_id, session):
+#     # BlobServiceClientの初期化
+#     blob_service_client = BlobServiceClient(
+#         f"https://{ACCOUNT_NAME}.blob.core.windows.net",
+#         credential=ACCOUNT_KEY
+#     )
+#     """Images テーブルへのデータ挿入"""
+#     position = 1  # position を初期化
+#     for key in files:
+#         file = files[key]
+#         unique_filename = f"{uuid.uuid4()}_{file.filename}"
+#         try:
+#             # BlobClientの取得
+#             blob_client = blob_service_client.get_blob_client(container=CONTAINER_NAME, blob=unique_filename)
+            
+#             # ファイルをBlob Storageにアップロード
+#             blob_client.upload_blob(file, overwrite=True)
+#             print(f"File uploaded to Azure Blob Storage: {unique_filename}")
+
+#             # Azure Blob StorageのURLを生成
+#             blob_url = f"https://{ACCOUNT_NAME}.blob.core.windows.net/{CONTAINER_NAME}/{unique_filename}"
+            
+#             image_data = {
+#                 "post_id": post_id,
+#                 "image_url": blob_url,  # 相対パスを保存
+#                 "position": position
+#             }
+#             session.execute(insert(mymodels.Images).values(image_data))
+#             # 次のファイルのために position をインクリメント
+#             position += 1
+#         except Exception as e:
+#             print(f"Error uploading to Azure Blob Storage: {e}")
 
 @app.get("/users/{user_id}")
 def get_customer(user_id: str):
@@ -86,10 +119,15 @@ def record_transaction(data: PointTransactionRequest):
     print(data)
     try:
         crud.insertUserAndStoreTransaction(data)
-        return {"message": f"{data.type} トランザクションを登録しました"}
+        if data.type == "earn":
+            return {"message": f"ユーザー：{data.user_id}に{data.point}ポイントを付与しました。"}
+        elif data.type == "use":
+            return {"message": f"ユーザー：{data.user_id}から{data.point}ポイントを減算しました。"}
     except Exception as e:
         print(f"エラー: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
 
 
 # 以下POSAPP用のエンドポイント
