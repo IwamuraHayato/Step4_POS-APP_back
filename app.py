@@ -9,6 +9,8 @@ from db_control import crud, mymodels_MySQL
 from dotenv import load_dotenv
 import os
 from datetime import datetime
+from azure.storage.blob import BlobServiceClient
+from dotenv import load_dotenv
 
 load_dotenv()
 
@@ -49,11 +51,12 @@ async def add_event(request: Request):
     try:
         event_data = [{
             "event_name": form["eventName"],
-            "event_date": form["startDate"],
-            # "end_date": form["endDate"], 書き込み保留
+            "start_date": form["startDate"], 
+            "end_date": form["endDate"],
             "start_at": form["startTime"],
             "end_at": form["endTime"],
             "description": form["description"],
+            "information": form["information"],
             "store_id": int(form["store_id"])
         }]
         print("event_data:", event_data)
@@ -68,38 +71,38 @@ async def add_event(request: Request):
         print(f"エラー: {e}")
         return {"error": f"投稿に失敗しました: {str(e)}"}, 500
     
-# def save_images(files, post_id, session):
-#     # BlobServiceClientの初期化
-#     blob_service_client = BlobServiceClient(
-#         f"https://{ACCOUNT_NAME}.blob.core.windows.net",
-#         credential=ACCOUNT_KEY
-#     )
-#     """Images テーブルへのデータ挿入"""
-#     position = 1  # position を初期化
-#     for key in files:
-#         file = files[key]
-#         unique_filename = f"{uuid.uuid4()}_{file.filename}"
-#         try:
-#             # BlobClientの取得
-#             blob_client = blob_service_client.get_blob_client(container=CONTAINER_NAME, blob=unique_filename)
+def save_images(files, post_id, session):
+    # BlobServiceClientの初期化
+    blob_service_client = BlobServiceClient(
+        f"https://{ACCOUNT_NAME}.blob.core.windows.net",
+        credential=ACCOUNT_KEY
+    )
+    """Images テーブルへのデータ挿入"""
+    position = 1  # position を初期化
+    for key in files:
+        file = files[key]
+        unique_filename = f"{uuid.uuid4()}_{file.filename}"
+        try:
+            # BlobClientの取得
+            blob_client = blob_service_client.get_blob_client(container=CONTAINER_NAME, blob=unique_filename)
             
-#             # ファイルをBlob Storageにアップロード
-#             blob_client.upload_blob(file, overwrite=True)
-#             print(f"File uploaded to Azure Blob Storage: {unique_filename}")
+            # ファイルをBlob Storageにアップロード
+            blob_client.upload_blob(file, overwrite=True)
+            print(f"File uploaded to Azure Blob Storage: {unique_filename}")
 
-#             # Azure Blob StorageのURLを生成
-#             blob_url = f"https://{ACCOUNT_NAME}.blob.core.windows.net/{CONTAINER_NAME}/{unique_filename}"
+            # Azure Blob StorageのURLを生成
+            blob_url = f"https://{ACCOUNT_NAME}.blob.core.windows.net/{CONTAINER_NAME}/{unique_filename}"
             
-#             image_data = {
-#                 "post_id": post_id,
-#                 "image_url": blob_url,  # 相対パスを保存
-#                 "position": position
-#             }
-#             session.execute(insert(mymodels.Images).values(image_data))
-#             # 次のファイルのために position をインクリメント
-#             position += 1
-#         except Exception as e:
-#             print(f"Error uploading to Azure Blob Storage: {e}")
+            image_data = {
+                "post_id": post_id,
+                "image_url": blob_url,  # 相対パスを保存
+                "position": position
+            }
+            session.execute(insert(mymodels.Images).values(image_data))
+            # 次のファイルのために position をインクリメント
+            position += 1
+        except Exception as e:
+            print(f"Error uploading to Azure Blob Storage: {e}")
 
 @app.get("/users/{user_id}")
 def get_customer(user_id: str):

@@ -61,12 +61,14 @@ def selectEvent(store_id):
             return None
     
 def insertEvent(event_data):
+    print(f"Inserting event with data: {event_data}")  # デバッグ用
     query = insert(Event).values(event_data)
     try:
         with session_scope() as session:
             result = session.execute(query)
             session.flush() 
             event_id = result.inserted_primary_key[0]
+            print(f"Successfully inserted event with ID: {event_id}")  # デバッグ用
             return event_id
     except sqlalchemy.exc.IntegrityError as e:
         print(f"Transaction：一意制約違反により、挿入に失敗しました: {e}")

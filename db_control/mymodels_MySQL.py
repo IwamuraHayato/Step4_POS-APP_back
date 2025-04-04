@@ -1,6 +1,8 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Date, Enum, TIMESTAMP, Text
+from sqlalchemy import Column, Integer, String, ForeignKey, Date, Enum, TIMESTAMP, Text, Time
 from sqlalchemy.orm import relationship, declarative_base
 from datetime import datetime
+import enum
+from sqlalchemy import Enum as SQLAlchemyEnum
 
 Base = declarative_base()
 
@@ -16,6 +18,15 @@ class Family(Base):
         return f"<Family(family_id={self.family_id}, family_name={self.family_name})>"
 
 # FamilyRelationship テーブル
+class RelationshipType(enum.Enum):
+    FATHER = "父"
+    MOTHER = "母"
+    SON = "息子"
+    DAUGHTER = "娘"
+    GRANDFATHER = "祖父"
+    GRANDMOTHER= "曾祖"
+    OTHER = "その他"
+
 class FamilyRelationship(Base):
     __tablename__ = 'FamilyRelationship'
 
@@ -43,21 +54,25 @@ class User(Base):
 
     user_id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(255), nullable=False)
-    password = Column(String(255), nullable=False)
-    family_id = Column(Integer, ForeignKey('Families.family_id', ondelete="SET NULL"))
-    relationship_id = Column(Integer, ForeignKey('FamilyRelationship.relationship_id', ondelete="SET NULL"))
+    name_kana = Column(String(255), nullable=True)
+    email = Column(String(255), unique=True, nullable=True)
+    family_id = Column(Integer, ForeignKey('Families.family_id', ondelete="SET NULL"), nullable=True)
+    relationship_id = Column(Integer, ForeignKey('FamilyRelationship.relationship_id', ondelete="SET NULL"), nullable=True)
     birth_date = Column(Date, nullable=False)
-    gender = Column(Enum('M', 'F'), nullable=False)
-    area_id = Column(Integer, ForeignKey('Area.area_id', ondelete="SET NULL"))
-    created_at = Column(TIMESTAMP, default=datetime.utcnow)
+    gender = Column(Enum('M', 'F', 'U'), nullable=False)
+    postal_code = Column(String(8), nullable=True)
+    address1 = Column(String(255), nullable=True)
+    address2 = Column(String(255), nullable=True)
+    nimoca_id = Column(String(255), nullable=True)  # 追加
+    saibugas_id = Column(String(255), nullable=True)  # 追加
+    created_at = Column(TIMESTAMP, default=datetime.utcnow, nullable=True)
 
     family = relationship("Family", back_populates="users")
     relation = relationship("FamilyRelationship", back_populates="users")
-    area = relationship("Area", back_populates="users")
     tags = relationship("UserTag", back_populates="user")
 
     def __repr__(self):
-        return f"<User(user_id={self.user_id}, name={self.name}, gender={self.gender}, birth_date={self.birth_date})>"
+        return f"<User(user_id={self.user_id}, name={self.name}, email={self.email})>"
 
 # UserTags (ユーザーとタグの中間テーブル)
 class UserTag(Base):
@@ -106,11 +121,15 @@ class Event(Base):
 
     event_id = Column(Integer, primary_key=True, autoincrement=True)
     event_name = Column(String(255), nullable=False)
-    event_date = Column(Date, nullable=False)
-    start_at = Column(String(5), nullable=False)
-    end_at = Column(String(5), nullable=False)
+    start_date = Column(Date, nullable=False)
+    end_date = Column(Date, nullable=False)
+    start_at = Column(Time, nullable=False)
+    end_at = Column(Time, nullable=False)
     description = Column(Text, nullable=False)
-    store_id = Column(Integer, ForeignKey('Stores.store_id', ondelete="CASCADE"))
+    information = Column(Text, nullable=True)
+    store_id = Column(Integer, ForeignKey('Stores.store_id', ondelete="CASCADE"), nullable=False)
+    created_at = Column(TIMESTAMP, default=datetime.utcnow, nullable=True)
+    updated_at = Column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=True)
 
     store = relationship("Store", back_populates="events")
     tags = relationship("EventTag", back_populates="event")
