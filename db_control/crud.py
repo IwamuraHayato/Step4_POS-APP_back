@@ -12,7 +12,7 @@ from contextlib import contextmanager
 
 from db_control.connect_MySQL import engine
 from . import mymodels_MySQL
-from .mymodels_MySQL import Family, FamilyRelationship, Area, User, UserTag, Tag, Store, Event, EventTag, TransactionType, PointTransaction
+from .mymodels_MySQL import Family, FamilyRelationship, User, UserTag, Tag, Store, Event, EventTag, TransactionType, PointTransaction
 
 Session = sessionmaker(bind=engine)
 
@@ -47,11 +47,14 @@ def selectEvent(store_id):
                 {
                     "event_id": event_info.event_id,
                     "event_name": event_info.event_name,
-                    "event_date": event_info.event_date.strftime("%Y-%m-%d"),
+                    "start_date": event_info.start_date.strftime("%Y-%m-%d"),
+                    "end_date": event_info.end_date.strftime("%Y-%m-%d"),
                     "start_at": str(event_info.start_at), 
                     "end_at": str(event_info.end_at),
                     "description": event_info.description,
-                    "store_id": event_info.store_id
+                    "store_id": event_info.store_id,
+                    "flyer_url": event_info.flyer_url,
+                    "event_image_url": event_info.event_image_url
                 }
                 for event_info in result
             ]
@@ -61,7 +64,27 @@ def selectEvent(store_id):
             return None
     
 def insertEvent(event_data):
+    """
+    イベントをデータベースに挿入する
+    
+    Args:
+        event_data (list): イベントデータのリスト
+        
+    Returns:
+        int: 挿入されたイベントのID
+    """
     print(f"Inserting event with data: {event_data}")  # デバッグ用
+    
+    # event_dataがリストの場合は最初の要素を取得
+    if isinstance(event_data, list) and len(event_data) > 0:
+        event_data = event_data[0]
+    
+    # flyer_urlとevent_image_urlが存在しない場合はNoneを設定
+    if 'flyer_url' not in event_data:
+        event_data['flyer_url'] = None
+    if 'event_image_url' not in event_data:
+        event_data['event_image_url'] = None
+    
     query = insert(Event).values(event_data)
     try:
         with session_scope() as session:
@@ -74,11 +97,29 @@ def insertEvent(event_data):
         print(f"Transaction：一意制約違反により、挿入に失敗しました: {e}")
         raise
 
+def getTagIdByName(tag_name):
+    """タグ名からタグIDを取得する"""
+    try:
+        with session_scope() as session:
+            query = select(Tag.tag_id).where(Tag.tag_name == tag_name)
+            result = session.execute(query).scalar()
+            if not result:
+                # タグが存在しない場合は新規作成
+                new_tag = Tag(tag_name=tag_name)
+                session.add(new_tag)
+                session.flush()
+                result = new_tag.tag_id
+            return result
+    except Exception as e:
+        print(f"タグID取得エラー: {e}")
+        raise
+
 def insertEventTag(event_id, tag_ids):
     try:
         with session_scope() as session:
-            for tag_id in tag_ids:
-                event_tag = EventTag(event_id=event_id, tag_id=int(tag_id))
+            for tag_name in tag_ids:
+                tag_id = getTagIdByName(tag_name)
+                event_tag = EventTag(event_id=event_id, tag_id=tag_id)
                 session.add(event_tag)
     except Exception as e:
         print(f"EventTag の挿入に失敗しました: {e}")
@@ -96,7 +137,7 @@ def getuserById(user_id):
                     "name": user_info.name,
                     "birth_date": str(user_info.birth_date),
                     "gender": user_info.gender,
-                    "area_id": user_info.area_id,
+                    # "area_id": user_info.area_id,
                     "points": points 
                 }
             return None

@@ -37,16 +37,16 @@ class FamilyRelationship(Base):
     def __repr__(self):
         return f"<FamilyRelationship(relationship_id={self.relationship_id}, relationship_type={self.relationship_type})>"
 
-# Area テーブル
-class Area(Base):
-    __tablename__ = 'Area'
+# # Area テーブル
+# class Area(Base):
+#     __tablename__ = 'Area'
 
-    area_id = Column(Integer, primary_key=True, autoincrement=True)
-    area_name = Column(String(255), unique=True, nullable=False)
-    users = relationship("User", back_populates="area")
+#     area_id = Column(Integer, primary_key=True, autoincrement=True)
+#     area_name = Column(String(255), unique=True, nullable=False)
+#     users = relationship("User", back_populates="area")
 
-    def __repr__(self):
-        return f"<Area(area_id={self.area_id}, area_name={self.area_name})>"
+#     def __repr__(self):
+#         return f"<Area(area_id={self.area_id}, area_name={self.area_name})>"
 
 # Users テーブル
 class User(Base):
@@ -127,6 +127,8 @@ class Event(Base):
     end_at = Column(Time, nullable=False)
     description = Column(Text, nullable=False)
     information = Column(Text, nullable=True)
+    flyer_url = Column(String(500), nullable=True)  # フライヤーのURL追加
+    event_image_url = Column(String(500), nullable=True)  # イベントイメージのURL追加
     store_id = Column(Integer, ForeignKey('Stores.store_id', ondelete="CASCADE"), nullable=False)
     created_at = Column(TIMESTAMP, default=datetime.utcnow, nullable=True)
     updated_at = Column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=True)
