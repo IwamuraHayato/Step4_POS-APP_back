@@ -206,3 +206,14 @@ def record_transaction(data: PointTransactionRequest):
     except Exception as e:
         print(f"エラー: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+# recommendation.py からルーターをインポート
+from recommendation import router as recommendation_router
+
+# アプリにルーターを登録
+app.include_router(recommendation_router)
+
+# ルートのパス設定を出力（デバッグ用）
+print("Available routes:")
+for route in app.routes:
+    print(f"{route.path} [{', '.join(route.methods)}]")
