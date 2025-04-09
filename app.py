@@ -222,3 +222,30 @@ app.include_router(recommendation_router)
 print("Available routes:")
 for route in app.routes:
     print(f"{route.path} [{', '.join(route.methods)}]")
+
+
+class FavoriteEvent(BaseModel):
+    user_id: int
+    event_id: int
+    event_title: str
+    image_url: str
+    area: str
+    date: str
+
+@app.post("/favorites")
+def add_favorite(event: FavoriteEvent):
+    try:
+        crud.insert_favorite_event(event)
+        return {"message": "お気に入りに追加しました"}
+    except Exception as e:
+        print("お気に入り登録エラー:", e)
+        raise HTTPException(status_code=500, detail="登録に失敗しました")
+
+@app.delete("/favorites/{user_id:int}/{event_id:int}")
+def remove_favorite(user_id: int, event_id: int):
+    try:
+        crud.delete_favorite_event(user_id, event_id)
+        return {"message": "お気に入りを解除しました"}
+    except Exception as e:
+        print("お気に入り解除エラー:", e)
+        raise HTTPException(status_code=500, detail="解除に失敗しました")

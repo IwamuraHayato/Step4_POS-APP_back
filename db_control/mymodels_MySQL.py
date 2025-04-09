@@ -180,3 +180,18 @@ class PointTransaction(Base):
 
     def __repr__(self):
         return f"<PointTransaction(transaction_id={self.transaction_id}, point={self.point})>"
+
+# FavoriteEvents (ユーザーのお気に入りイベント)
+class FavoriteEvent(Base):
+    __tablename__ = 'FavoriteEvents'
+
+    favorite_id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey('Users.user_id', ondelete="CASCADE"), nullable=False)
+    event_id = Column(Integer, ForeignKey('Events.event_id', ondelete="CASCADE"), nullable=False)
+    created_at = Column(TIMESTAMP, default=datetime.utcnow)
+
+    user = relationship("User", backref="favorite_events")
+    event = relationship("Event", backref="favorited_by")
+
+    def __repr__(self):
+        return f"<FavoriteEvent(favorite_id={self.favorite_id}, user_id={self.user_id}, event_id={self.event_id})>"

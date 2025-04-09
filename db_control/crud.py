@@ -12,7 +12,7 @@ from contextlib import contextmanager
 
 from db_control.connect_MySQL import engine
 from . import mymodels_MySQL
-from .mymodels_MySQL import Family, FamilyRelationship, User, UserTag, Tag, Store, Event, EventTag, TransactionType, PointTransaction
+from .mymodels_MySQL import Family, FamilyRelationship, User, UserTag, Tag, Store, Event, EventTag, TransactionType, PointTransaction, FavoriteEvent
 
 Session = sessionmaker(bind=engine)
 
@@ -206,170 +206,50 @@ def get_all_tags():
         print(f"タグ一覧取得エラー: {e}")
         raise
 
-def get_last_inserted_id(session, model):
-    return session.execute(
-        select(model.TRD_ID).order_by(model.TRD_ID.desc()).limit(1)
-    ).scalar()
-
-def insertTransaction(transaction_data):
-    query = insert(Transaction).values(transaction_data)
+def insert_favorite_event(event):
+    """
+    お気に入りイベントを登録
+    event: FavoriteEvent (Pydanticモデル)
+    """
     try:
         with session_scope() as session:
-            session.execute(query)
-            TRD_ID = get_last_inserted_id(session, Transaction)
-            return TRD_ID
-    except sqlalchemy.exc.IntegrityError as e:
-        print(f"Transaction：一意制約違反により、挿入に失敗しました: {e}")
-        raise
+            # 重複チェック（同じuser_id + event_idの組み合わせがあるか）
+            existing = session.query(FavoriteEvent).filter_by(
+                user_id=event.user_id,
+                event_id=event.event_id
+            ).first()
+            if existing:
+                print("すでにお気に入り登録されています")
+                return  # or raise Exception / HTTPException
 
-def insertDetails(detail_data):
-    insert_query = insert(TransactionDetail).values(detail_data)
-    get_tax_percent_query = select(Tax.PERCENT).where(Tax.TAX_CD == detail_data["TAX_CD"])
-    # get_total_amt_query = select(func.sum(TransactionDetail.PRD_PRICE)).where(TransactionDetail.TRD_ID == detail_data["TRD_ID"])
-    try:
-        with session_scope() as session:
-            session.execute(insert_query)
-            TAX_PERCENT = session.execute(get_tax_percent_query).scalar()
-            PRD_PRICE_with_TAX = detail_data["PRD_PRICE"]*(1 + TAX_PERCENT) #税込単価を計算
-            # PRD_PRICE = detail_data["PRD_PRICE"]
-            # TOTAL_AMT = session.execute(get_total_amt_query).scalar()
-            return PRD_PRICE_with_TAX
-    except sqlalchemy.exc.IntegrityError as e:
-        print(f"TransactionDetail：一意制約違反により、挿入に失敗しました: {e}")
-        # 一意制約とはデータが重複を許可していないということ
-        raise
-
-def insetTotalamt(TOTAL_AMT, TRD_ID, TTL_AMT_EX_TAX):
-    query_TOTAL_AMT = update(Transaction).where(Transaction.TRD_ID == TRD_ID).values(TOTAL_AMT = TOTAL_AMT)
-    query_TTL_AMT_EX_TAX = update(Transaction).where(Transaction.TRD_ID == TRD_ID).values(TTL_AMT_EX_TAX = TTL_AMT_EX_TAX)
-    query_get_TTL_AMT = select(Transaction.TOTAL_AMT).where(Transaction.TRD_ID == TRD_ID)
-    try:
-        with session_scope() as session:
-            session.execute(query_TOTAL_AMT)
-            session.execute(query_TTL_AMT_EX_TAX)
-            TTL_AMT = session.execute(query_get_TTL_AMT).scalar()
-            return TTL_AMT
-    except sqlalchemy.exc.IntegrityError as e:
-        print(f"TOTAL_AMTの挿入に失敗しました: {e}")
-        raise
-
-def myselect(mymodels_MySQL, CODE):
-    query = select(mymodels_MySQL).where(mymodels_MySQL.CODE == CODE)
-    try:
-        with session_scope() as session:
-            # クエリを実行して結果を取得
-            result = session.execute(query).scalars().all()
-            print(f"Query result: {result}")
-
-            if not result:
-                print(f"{CODE}は登録されていない商品です。")
-                return None
-
-            # 結果をオブジェクトから辞書に変換し、リストに追加
-            result_dict_list = [
-                {
-                    "PRD_ID": prd_info.PRD_ID,
-                    "CODE": prd_info.CODE,
-                    "NAME": prd_info.NAME,
-                    "PRICE": prd_info.PRICE
-                }
-                for prd_info in result
-            ]
-
-        # リストを JSON に変換して返す
-        result_json = json.dumps(result_dict_list, ensure_ascii=False)
-        return result_json
-    except sqlalchemy.exc.IntegrityError as e:
-        print(f"一意制約違反: {e}")
-        return None
+            new_favorite = FavoriteEvent(
+                user_id=event.user_id,
+                event_id=event.event_id
+            )
+            session.add(new_favorite)
+            print("お気に入りを登録しました")
     except Exception as e:
-        print(f"エラー: {e}")
-        return None
+        print(f"お気に入り登録エラー: {e}")
+        raise
 
 
-# def myselect(mymodel, customer_id):
-#     # session構築
-#     Session = sessionmaker(bind=engine)
-#     session = Session()
-#     query = session.query(mymodel_My).filter(mymodel.customer_id == customer_id)
-#     try:
-#         # トランザクションを開始
-#         with session.begin():
-#             result = query.all()
-#         # 結果をオブジェクトから辞書に変換し、リストに追加
-#         result_dict_list = []
-#         for customer_info in result:
-#             result_dict_list.append({
-#                 "customer_id": customer_info.customer_id,
-#                 "customer_name": customer_info.customer_name,
-#                 "age": customer_info.age,
-#                 "gender": customer_info.gender
-#             })
-#         # リストをJSONに変換
-#         result_json = json.dumps(result_dict_list, ensure_ascii=False)
-#     except sqlalchemy.exc.IntegrityError:
-#         print("一意制約違反により、挿入に失敗しました")
-
-#     # セッションを閉じる
-#     session.close()
-#     return result_json
-
-
-def myselectAll(mymodel):
-    # session構築
-    Session = sessionmaker(bind=engine)
-    session = Session()
-    query = select(mymodel)
+def delete_favorite_event(user_id: int, event_id: int):
+    """
+    お気に入りイベントを削除
+    """
     try:
-        # トランザクションを開始
-        with session.begin():
-            df = pd.read_sql_query(query, con=engine)
-            result_json = df.to_json(orient='records', force_ascii=False)
+        with session_scope() as session:
+            favorite = session.query(FavoriteEvent).filter_by(
+                user_id=user_id,
+                event_id=event_id
+            ).first()
 
-    except sqlalchemy.exc.IntegrityError:
-        print("一意制約違反により、挿入に失敗しました")
-        result_json = None
-
-    # セッションを閉じる
-    session.close()
-    return result_json
-
-
-def myupdate(mymodel, values):
-    # session構築
-    Session = sessionmaker(bind=engine)
-    session = Session()
-
-    customer_id = values.pop("customer_id")
-
-    query = "お見事！E0002の原因はこのクエリの実装ミスです。正しく実装しましょう"
-    try:
-        # トランザクションを開始
-        with session.begin():
-            result = session.execute(query)
-    except sqlalchemy.exc.IntegrityError:
-        print("一意制約違反により、挿入に失敗しました")
-        session.rollback()
-    # セッションを閉じる
-    session.close()
-    return "put"
-
-
-def mydelete(mymodel, customer_id):
-    # session構築
-    Session = sessionmaker(bind=engine)
-    session = Session()
-    query = delete(mymodel).where(mymodel.customer_id == customer_id)
-    try:
-        # トランザクションを開始
-        with session.begin():
-            result = session.execute(query)
-    except sqlalchemy.exc.IntegrityError:
-        print("一意制約違反により、挿入に失敗しました")
-        session.rollback()
-
-    # セッションを閉じる
-    session.close()
-    return customer_id + " is deleted"
-
+            if favorite:
+                session.delete(favorite)
+                print("お気に入りを削除しました")
+            else:
+                print("対象のお気に入りは存在しません")
+    except Exception as e:
+        print(f"お気に入り削除エラー: {e}")
+        raise
 
