@@ -197,7 +197,14 @@ def insertUserAndStoreTransaction(data):
 
         session.add_all([user_transaction, store_transaction])
 
-
+def get_all_tags():
+    try:
+        with session_scope() as session:
+            result = session.query(mymodels_MySQL.Tag).all()
+            return [{"tag_id": tag.tag_id, "tag_name": tag.tag_name} for tag in result]
+    except Exception as e:
+        print(f"タグ一覧取得エラー: {e}")
+        raise
 
 def get_last_inserted_id(session, model):
     return session.execute(

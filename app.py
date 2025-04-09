@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Query, Request, File, UploadFile, Form
+from fastapi import FastAPI, HTTPException, Query, Request, File, UploadFile, Form, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
@@ -206,6 +206,11 @@ def record_transaction(data: PointTransactionRequest):
     except Exception as e:
         print(f"エラー: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/tags")
+def get_tags():
+    return crud.get_all_tags()
 
 # recommendation.py からルーターをインポート
 from recommendation import router as recommendation_router
