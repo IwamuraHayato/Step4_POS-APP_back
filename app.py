@@ -122,35 +122,25 @@ async def add_event(
     startTime: str = Form(...),
     endTime: str = Form(...),
     description: str = Form(...),
-    information: str = Form(...),  # 追加されたフィールド
+    information: str = Form(...),
     store_id: int = Form(...),
     tags: List[str] = Form([]),
     flyer: Optional[UploadFile] = None,
-    eventImage: Optional[UploadFile] = None  # イベントイメージ用のパラメータを追加
+    eventImage: Optional[UploadFile] = None
 ):
     form = await request.form()
     print("Received values:", form)
 
-    # ファイルのデバッグ情報
     for key, value in form.items():
         if isinstance(value, UploadFile):
             print(f"File in form: {key}, filename: {value.filename}, size: {value.size}")
-    
-    # 具体的なファイルパラメータをチェック
     print("flyer param check:", flyer)
     print("eventImage param check:", eventImage)
 
     try:
-        # フライヤーがアップロードされた場合、Blob Storageに保存
-        flyer_url = None
-        if flyer:
-            flyer_url = save_file_to_blob(flyer)
-        
-        # イベントイメージがアップロードされた場合、Blob Storageに保存
-        event_image_url = None
-        if eventImage:
-            event_image_url = save_file_to_blob(eventImage)
-        
+        flyer_url = save_file_to_blob(flyer) if flyer else None
+        event_image_url = save_file_to_blob(eventImage) if eventImage else None
+
         event_data = [{
             "event_name": eventName,
             "start_date": startDate,
@@ -158,28 +148,32 @@ async def add_event(
             "start_at": startTime,
             "end_at": endTime,
             "description": description,
-            "information": information,  # 追加されたフィールド
+            "information": information,
             "flyer_url": flyer_url,
-            "event_image_url": event_image_url,  # イベントイメージのURLを追加
+            "event_image_url": event_image_url,
             "store_id": store_id
         }]
         print("event_data:", event_data)
-        tags = form.getlist("tags[]")
         print("tags:", tags)
 
         event_id = crud.insertEvent(event_data)
         if tags:
             crud.insertEventTag(event_id, tags)
 
-        return {
-            "message": "イベント登録成功！", 
-            "event_id": event_id, 
-            "flyer_url": flyer_url,
-            "event_image_url": event_image_url
+        return JSONResponse(
+            status_code=200,
+            content={
+                "message": "イベント登録成功！", 
+                "event_id": event_id, 
+                "flyer_url": flyer_url,
+                "event_image_url": event_image_url
             }
+        )
+
     except Exception as e:
         print(f"エラー: {e}")
-        return {"error": f"投稿に失敗しました: {str(e)}"}, 500
+        raise HTTPException(status_code=500, detail=f"投稿に失敗しました: {str(e)}")
+
 
 @app.get("/users/{user_id}")
 def get_customer(user_id: str):
