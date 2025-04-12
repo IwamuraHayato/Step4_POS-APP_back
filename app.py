@@ -122,7 +122,7 @@ async def add_event(
     startTime: str = Form(...),
     endTime: str = Form(...),
     description: str = Form(...),
-    information: str = Form(...),
+    information: Optional[str] = Form(None),
     store_id: int = Form(...),
     tags: List[str] = Form([]),
     flyer: Optional[UploadFile] = None,

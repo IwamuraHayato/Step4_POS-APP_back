@@ -117,8 +117,10 @@ def getTagIdByName(tag_name):
 def insertEventTag(event_id, tag_ids):
     try:
         with session_scope() as session:
-            for tag_name in tag_ids:
-                tag_id = getTagIdByName(tag_name)
+            for tag_id in tag_ids:
+                existing_tag = session.query(Tag).filter_by(tag_id=tag_id).first()
+                if not existing_tag:
+                    raise Exception(f"存在しないtag_idです: {tag_id}")
                 event_tag = EventTag(event_id=event_id, tag_id=tag_id)
                 session.add(event_tag)
     except Exception as e:
