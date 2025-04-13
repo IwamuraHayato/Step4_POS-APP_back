@@ -208,7 +208,7 @@ def get_all_tags():
         print(f"タグ一覧取得エラー: {e}")
         raise
 
-def insert_favorite_event(event):
+def insert_favorite_event(user_id, event_id):
     """
     お気に入りイベントを登録
     event: FavoriteEvent (Pydanticモデル)
@@ -217,16 +217,16 @@ def insert_favorite_event(event):
         with session_scope() as session:
             # 重複チェック（同じuser_id + event_idの組み合わせがあるか）
             existing = session.query(FavoriteEvent).filter_by(
-                user_id=event.user_id,
-                event_id=event.event_id
+                user_id=user_id,
+                event_id=event_id
             ).first()
             if existing:
                 print("すでにお気に入り登録されています")
                 return  # or raise Exception / HTTPException
 
             new_favorite = FavoriteEvent(
-                user_id=event.user_id,
-                event_id=event.event_id
+                user_id=user_id,
+                event_id=event_id
             )
             session.add(new_favorite)
             print("お気に入りを登録しました")
@@ -255,3 +255,31 @@ def delete_favorite_event(user_id: int, event_id: int):
         print(f"お気に入り削除エラー: {e}")
         raise
 
+def get_favorite_event_ids(user_id):
+    with session_scope() as session:
+        result = session.query(FavoriteEvent.event_id).filter_by(user_id=user_id).distinct().all()
+        return [r.event_id for r in result]
+
+def get_favorite_events(user_id):
+    with session_scope() as session:
+        result = session.query(
+            FavoriteEvent.event_id,
+            Event.event_name,
+            Event.event_image_url,
+            Event.start_date,
+            Store.store_name
+        ).join(Event, FavoriteEvent.event_id == Event.event_id) \
+         .join(Store, Event.store_id == Store.store_id) \
+         .filter(FavoriteEvent.user_id == user_id) \
+         .distinct().all()
+
+        return [
+            {
+                "event_id": r.event_id,
+                "event_name": r.event_name,
+                "area": r.store_name,
+                "date": r.start_date.strftime("%Y/%m/%d"),
+                "image_url": r.event_image_url
+            }
+            for r in result
+        ]

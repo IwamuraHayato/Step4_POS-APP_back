@@ -243,3 +243,12 @@ def remove_favorite(user_id: int, event_id: int):
     except Exception as e:
         print("お気に入り解除エラー:", e)
         raise HTTPException(status_code=500, detail="解除に失敗しました")
+
+@app.get("/favorites/{user_id}")
+def get_favorite_events(user_id: int):
+    try:
+        favorites = crud.get_favorite_events(user_id)
+        return {"favorites": favorites}
+    except Exception as e:
+        print("お気に入り取得エラー:", e)
+        raise HTTPException(status_code=500, detail="取得に失敗しました")
