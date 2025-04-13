@@ -226,14 +226,14 @@ class FavoriteEvent(BaseModel):
     area: str
     date: str
 
-@app.post("/favorites")
-def add_favorite(event: FavoriteEvent):
+@app.post("/favorites/{user_id}/{event_id}")
+def add_favorite(user_id: int, event_id: int):
     try:
-        crud.insert_favorite_event(event)
+        crud.insert_favorite_event(user_id, event_id)
         return {"message": "お気に入りに追加しました"}
     except Exception as e:
-        print("お気に入り登録エラー:", e)
-        raise HTTPException(status_code=500, detail="登録に失敗しました")
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.delete("/favorites/{user_id:int}/{event_id:int}")
 def remove_favorite(user_id: int, event_id: int):
