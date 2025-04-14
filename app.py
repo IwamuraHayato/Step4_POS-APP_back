@@ -252,3 +252,22 @@ def get_favorite_events(user_id: int):
     except Exception as e:
         print("お気に入り取得エラー:", e)
         raise HTTPException(status_code=500, detail="取得に失敗しました")
+
+# イベント検索
+@app.get("/events/search")
+def search_events(keyword: str = '', date: str = '', tags: str = ''):
+    try:
+        result = crud.search_events(keyword, date, tags)
+        return {"events": result}
+    except Exception as e:
+        print("イベント検索エラー:", e)
+        raise HTTPException(status_code=500, detail="検索に失敗しました")
+
+@app.get("/events/upcoming")
+def get_upcoming_events():
+    try:
+        events = crud.get_upcoming_events()
+        return {"events": events}
+    except Exception as e:
+        print(f"エラー: {e}")
+        raise HTTPException(status_code=500, detail="イベント取得に失敗しました")

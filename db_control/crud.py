@@ -13,6 +13,8 @@ from contextlib import contextmanager
 from db_control.connect_MySQL import engine
 from . import mymodels_MySQL
 from .mymodels_MySQL import Family, FamilyRelationship, User, UserTag, Tag, Store, Event, EventTag, TransactionType, PointTransaction, FavoriteEvent
+from datetime import date
+
 
 Session = sessionmaker(bind=engine)
 
@@ -283,3 +285,62 @@ def get_favorite_events(user_id):
             }
             for r in result
         ]
+
+def search_events(keyword: str, date: str, tags: str):
+    with session_scope() as session:
+        query = session.query(Event, Store.store_name).join(Store, Event.store_id == Store.store_id)
+
+        if keyword:
+            query = query.filter(Event.event_name.contains(keyword) | Event.description.contains(keyword))
+
+        if date:
+            query = query.filter(Event.start_date == date)
+
+        if tags:
+            tag_list = tags.split(',')
+            query = query.join(EventTag, Event.event_id == EventTag.event_id)\
+                         .join(Tag, EventTag.tag_id == Tag.tag_id)\
+                         .filter(Tag.tag_name.in_(tag_list))
+
+        results = query.all()
+
+        return [{
+            "id": e.Event.event_id,
+            "title": e.Event.event_name,
+            "date": e.Event.start_date.strftime("%Y-%m-%d"),
+            "area": e.store_name,
+            "description": e.Event.description,
+            "imageUrl": e.Event.event_image_url or None,
+            "tags": [t.tag_name for t in session.query(Tag).join(EventTag).filter(EventTag.event_id == e.Event.event_id)]
+        } for e in results]
+    
+
+def get_upcoming_events():
+    today = date.today()
+    with session_scope() as session:
+        events = session.query(Event, Store.store_name)\
+            .join(Store, Event.store_id == Store.store_id)\
+            .filter(Event.start_date >= today)\
+            .order_by(Event.start_date.asc())\
+            .all()
+
+        event_list = []
+        for e in events:
+            tags = session.query(Tag.tag_name)\
+                .join(EventTag)\
+                .filter(EventTag.event_id == e.Event.event_id)\
+                .all()
+            tag_names = [t.tag_name for t in tags]
+
+            event_list.append({
+                "id": e.Event.event_id,
+                "title": e.Event.event_name,
+                "date": e.Event.start_date.strftime("%Y-%m-%d"),
+                "area": e.store_name,
+                "imageUrl": e.Event.event_image_url,
+                "description": e.Event.description,
+                "tags": tag_names,
+            })
+
+        return event_list
+
