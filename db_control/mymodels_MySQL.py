@@ -65,6 +65,9 @@ class User(Base):
     address2 = Column(String(255), nullable=True)
     nimoca_id = Column(String(255), nullable=True)  # 追加
     saibugas_id = Column(String(255), nullable=True)  # 追加
+    verification_code = Column(String(6), nullable=True)  # 認証コード（6桁など）
+    code_expiry = Column(TIMESTAMP, nullable=True)        # 認証コードの有効期限
+
     created_at = Column(TIMESTAMP, default=datetime.utcnow, nullable=True)
 
     family = relationship("Family", back_populates="users")

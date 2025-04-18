@@ -1,3 +1,5 @@
+from schemas import RegisterStep1Request
+
 # uname() error回避
 import platform
 print("platform", platform.uname())
@@ -5,14 +7,15 @@ print("platform", platform.uname())
 
 from sqlalchemy import create_engine, insert, delete, update, select, func
 import sqlalchemy
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session,sessionmaker
 import json
 import pandas as pd
 from contextlib import contextmanager
-
+from db_control import mymodels_MySQL as models
 from db_control.connect_MySQL import engine
 from . import mymodels_MySQL
 from .mymodels_MySQL import Family, FamilyRelationship, User, UserTag, Tag, Store, Event, EventTag, TransactionType, PointTransaction, FavoriteEvent
+from typing import List
 
 Session = sessionmaker(bind=engine)
 
@@ -253,3 +256,28 @@ def delete_favorite_event(user_id: int, event_id: int):
         print(f"お気に入り削除エラー: {e}")
         raise
 
+def insert_user_step1(db, data):
+    new_user = models.User(
+        name=data.name,
+        name_kana=data.name_kana,
+        gender=data.gender,
+        birth_date=data.birth_date,
+        postal_code=data.postal_code,
+        address1=data.address1,
+        address2=data.address2,
+        email=None, #仮登録なので空、Step3で登録
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)  # user_id を取得するため
+    return new_user.user_id
+
+def insertUserTag(user_id: int, tag_id: int):
+    try:
+        with session_scope() as session:
+            new_user_tag = UserTag(user_id=user_id, tag_id=tag_id)
+            session.add(new_user_tag)
+            print(f"UserTag 登録成功: user_id={user_id}, tag_id={tag_id}")
+    except Exception as e:
+        print(f"UserTag 登録失敗: {e}")
+        raise
