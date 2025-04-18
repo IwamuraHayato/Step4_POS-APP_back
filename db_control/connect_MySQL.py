@@ -1,4 +1,5 @@
 from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 import os
 from dotenv import load_dotenv
 from urllib.parse import quote_plus
@@ -31,7 +32,7 @@ if not SSL_CERT_PATH:
 # デバッグ用ログ出力
 print("Encoded DB_PASSWORD:", DB_PASSWORD)
 
-# MySQLのURL構築
+# MySQLのURL構築(本番はこっち)
 DATABASE_URL = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}?ssl_ca={SSL_CERT_PATH}"
 
 # エンジンの作成
@@ -55,3 +56,5 @@ except Exception as e:
     import traceback
     print("Secure connection failed:")
     traceback.print_exc()
+
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
