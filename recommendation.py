@@ -68,7 +68,7 @@ def calculate_recommendations(user_id: int, top_n: int = 5):
             
             # ユーザータグの取得
             query_tags = text("""
-            SELECT u.user_id, t.tag_id 
+            SELECT u.user_id, t.tag_name  
             FROM UserTags u 
             JOIN Tags t ON u.tag_id = t.tag_id
             """)
@@ -78,7 +78,7 @@ def calculate_recommendations(user_id: int, top_n: int = 5):
             if result_tags:
                 df_tags = pd.DataFrame(result_tags)
                 df_tags_onehot = df_tags.pivot_table(
-                    index="user_id", columns="tag_id", aggfunc="size", fill_value=0
+                    index="user_id", columns="tag_name", aggfunc="size", fill_value=0
                 )
                 df_tags_onehot = df_tags_onehot.add_prefix("tag_")
             else:
@@ -178,7 +178,7 @@ def calculate_recommendations(user_id: int, top_n: int = 5):
                             id=str(event.event_id),
                             imageUrl=event.event_image_url or event.flyer_url,
                             area="福岡市内",  # 固定値を使用
-                            title=f"おすすめ: {event.event_name}",
+                            title=event.event_name,
                             date=event_date,
                             tags=["おすすめ"] + tags,
                             description=event.description,
