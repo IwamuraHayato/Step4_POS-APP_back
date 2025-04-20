@@ -264,6 +264,26 @@ class RegisterStep4Request(BaseModel):
     nimoca_id: str
     saibugas_id: str
 
+# Step4: nimoca ID と saibugas ID を登録
+@app.post("/register/step4")
+def register_step4(data: RegisterStep4Request, db: Session = Depends(get_db)):
+    try:
+        # user_id でユーザーを取得
+        user = db.query(mymodels_MySQL.User).filter_by(user_id=data.user_id).first()
+
+        if not user:
+            raise HTTPException(status_code=404, detail="ユーザーが見つかりません")
+
+        # nimoca_id と saibugas_id を更新
+        user.nimoca_id = data.nimoca_id
+        user.saibugas_id = data.saibugas_id
+
+        db.commit()
+        return {"message": "Step4 登録成功"}
+    
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Step4 登録失敗: {str(e)}")
 
 
 @app.get("/event")
