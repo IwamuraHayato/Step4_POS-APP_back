@@ -4,6 +4,9 @@ import os
 from dotenv import load_dotenv
 from urllib.parse import quote_plus
 
+ssl_test_path = r"C:\Users\daisu\SSL\DigiCertGlobalRootCA.crt.pem"
+print("✅ 手動パス検証:", os.path.isfile(ssl_test_path))
+
 # 環境変数の読み込み
 load_dotenv()
 
@@ -28,6 +31,9 @@ DB_NAME = get_env_variable('DB_NAME')
 SSL_CERT_PATH = os.getenv('SSL_CERT_PATH', '/etc/ssl/certs/ca-certificates.crt')
 if not SSL_CERT_PATH:
     print("Warning: SSL_CERT_PATH is not set.")
+ssl_ca = os.getenv("SSL_CERT_PATH")
+print("✅ SSL_CA path:", ssl_ca)
+print("✅ ファイル存在:", os.path.isfile(ssl_ca))
 
 # デバッグ用ログ出力
 print("Encoded DB_PASSWORD:", DB_PASSWORD)

@@ -15,12 +15,102 @@ from sqlalchemy.orm import Session
 from datetime import datetime,timedelta,date
 from azure.storage.blob import BlobServiceClient
 from azure.storage.blob import ContentSettings
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail
 from dotenv import load_dotenv
 import uuid
 from typing import List, Optional
 
 
+
 load_dotenv()
+
+print("DEBUG SENDGRID_API_KEY (partial):", os.getenv("SENDGRID_API_KEY")[:10])
+print("DEBUG FROM_EMAIL:", os.getenv("FROM_EMAIL"))
+
+SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
+FROM_EMAIL = os.getenv("FROM_EMAIL")
+
+app = FastAPI()
+
+# ログイン用の認証（user_id 不要）
+class LoginCodeVerifyRequest(BaseModel):
+    email: str
+    code: str
+
+# ログイン───── ④ DBセッション関数（定型）─────
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+class LoginSendCodeRequest(BaseModel):
+    email: str
+
+@app.post("/auth/send-login-code")
+def send_login_code(data: LoginSendCodeRequest, db: Session = Depends(get_db)):
+    # 登録済みユーザーをDBから検索
+    user = db.query(mymodels_MySQL.User).filter_by(email=data.email).first()
+
+    if not user:
+        print(f"🚫 未登録のメールアドレスが指定されました: {data.email}")
+        raise HTTPException(status_code=404, detail="このメールアドレスは登録されていません")
+
+    # 認証コードを生成
+    code = generate_verification_code()
+    expiry = datetime.now() + timedelta(minutes=5)
+
+    # DBに保存
+    user.verification_code = code
+    user.code_expiry = expiry
+    db.commit()
+
+    # メール送信
+    send_verification_email(data.email, code)
+    print(f"✅ 認証コードを {data.email} に送信しました（code: {code}）")
+    return {"message": "ログイン用の認証コードを送信しました"}
+
+@app.post("/auth/login-verify-code")
+def login_verify_code(data: LoginCodeVerifyRequest, db: Session = Depends(get_db)):
+    user = db.query(mymodels_MySQL.User).filter_by(email=data.email).first()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="ユーザーが見つかりません")
+    if user.verification_code != data.code:
+        raise HTTPException(status_code=401, detail="認証コードが一致しません")
+    if user.code_expiry < datetime.now():
+        raise HTTPException(status_code=401, detail="認証コードの有効期限が切れています")
+
+    return {"message": "ログイン成功", "user_id": user.user_id}
+
+
+def send_verification_email(to_email: str, code: str) -> bool:
+    message = Mail(
+        from_email=FROM_EMAIL,
+        to_emails=to_email,
+        subject='【FHSP】認証コードのお知らせ',
+        plain_text_content=f'以下の認証コードを入力してください：\n\n{code}'
+    )
+    try:
+        sg = SendGridAPIClient(SENDGRID_API_KEY)
+        response = sg.send(message)
+        print(response.status_code)
+        return response.status_code == 202
+    except Exception as e:
+        print(f"SendGrid送信失敗: {e}")
+        return False
+
+# テスト用APIエンドポイント
+@app.get("/send-test-email")
+def send_test_email(to: str = Query(..., description="テスト送信先メールアドレス")):
+    code = "123456"  # テスト用の認証コード
+    success = send_verification_email(to, code)
+    if success:
+        return {"message": "メール送信成功！"}
+    else:
+        return {"message": "メール送信失敗…"}
 
 # MySQLのテーブル作成
 from db_control.create_tables_MySQL import init_db
@@ -28,7 +118,7 @@ from db_control.create_tables_MySQL import init_db
 # # アプリケーション初期化時にテーブルを作成
 init_db()
 
-app = FastAPI()
+# app = FastAPI()
     
 # Azure Blob Storageの接続設定
 ACCOUNT_NAME = os.getenv('AZURE_STORAGE_ACCOUNT_NAME')
@@ -49,22 +139,19 @@ app.add_middleware(
 def index():
     return {"message": "FastAPI top page!!"}
 
-# ログイン───── ④ DBセッション関数（定型）─────
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 # ログイン───── ⑤ send-codeエンドポイント─────
+class SendCodeRequest(BaseModel):
+    email: str
+    user_id: int  # フロントから送られてくるuser_idに対応
+
 @app.post("/auth/send-code")
-def send_login_code(email: str, db: Session = Depends(get_db)):
+def send_login_code(data: SendCodeRequest, db: Session = Depends(get_db)):
     try:
         code = generate_verification_code()
         expiry = datetime.now() + timedelta(minutes=5)
 
-        user = db.query(mymodels_MySQL.User).filter_by(email=email).first()
+        user = db.query(mymodels_MySQL.User).filter_by(email=data.email).first()
         if user:
             user.verification_code = code
             user.code_expiry = expiry
@@ -72,7 +159,7 @@ def send_login_code(email: str, db: Session = Depends(get_db)):
             user = mymodels_MySQL.User(
                 name="仮ユーザー",
                 name_kana="カリユーザー",
-                email=email,
+                email=data.email,
                 birth_date=datetime(2000, 1, 1),
                 gender="U",
                 verification_code=code,
@@ -82,7 +169,7 @@ def send_login_code(email: str, db: Session = Depends(get_db)):
 
         db.commit()
 
-        send_verification_email(email, code)  # SendGridまだ未設定でもOK
+        send_verification_email(data.email, code)
 
         return {"message": "認証コードを送信しました（テストコード: " + code + ")"}
     except Exception as e:
@@ -107,9 +194,10 @@ class CodeVerifyRequest(BaseModel):
     user_id: int
     email: str
     code: str
-    
+
 @app.post("/auth/verify-code")
 def verify_code(data: CodeVerifyRequest, db: Session = Depends(get_db)):
+    print("💬 受け取ったリクエストボディ:", data)
     user = db.query(mymodels_MySQL.User).filter_by(email=data.email).first()
 
     if not user:
@@ -178,23 +266,6 @@ class RegisterStep4Request(BaseModel):
     nimoca_id: str
     saibugas_id: str
 
-@app.post("/register/step4")
-def register_step4(data: RegisterStep4Request, db: Session = Depends(get_db)):
-    try:
-        user = db.query(mymodels_MySQL.User).filter_by(user_id=data.user_id).first()
-        if not user:
-            raise HTTPException(status_code=404, detail="ユーザーが見つかりません")
-
-        # データを更新
-        user.nimoca_id = data.nimoca_id
-        user.saibugas_id = data.saibugas_id
-
-        db.commit()
-        return {"message": "Step4 登録完了"}
-    except Exception as e:
-        db.rollback()
-        print("Step4登録エラー:", e)
-        raise HTTPException(status_code=500, detail="Step4登録に失敗しました")
 
 
 @app.get("/event")
