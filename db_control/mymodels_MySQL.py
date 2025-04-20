@@ -135,6 +135,7 @@ class Event(Base):
     store_id = Column(Integer, ForeignKey('Stores.store_id', ondelete="CASCADE"), nullable=False)
     created_at = Column(TIMESTAMP, default=datetime.utcnow, nullable=True)
     updated_at = Column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=True)
+    area = Column(String(255), nullable=True)
 
     store = relationship("Store", back_populates="events")
     tags = relationship("EventTag", back_populates="event")

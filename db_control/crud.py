@@ -308,7 +308,7 @@ def get_favorite_events(user_id):
             {
                 "event_id": r.event_id,
                 "event_name": r.event_name,
-                "area": r.store_name,
+                "area": r.area,
                 "date": r.start_date.strftime("%Y/%m/%d"),
                 "image_url": r.event_image_url
             }
@@ -337,7 +337,7 @@ def search_events(keyword: str, date: str, tags: str):
             "id": e.Event.event_id,
             "title": e.Event.event_name,
             "date": e.Event.start_date.strftime("%Y-%m-%d"),
-            "area": e.store_name,
+            "area": e.area,
             "description": e.Event.description,
             "imageUrl": e.Event.event_image_url or None,
             "tags": [t.tag_name for t in session.query(Tag).join(EventTag).filter(EventTag.event_id == e.Event.event_id)]
@@ -365,7 +365,7 @@ def get_upcoming_events():
                 "id": e.Event.event_id,
                 "title": e.Event.event_name,
                 "date": e.Event.start_date.strftime("%Y-%m-%d"),
-                "area": e.store_name,
+                "area": e.area,
                 "imageUrl": e.Event.event_image_url,
                 "description": e.Event.description,
                 "tags": tag_names,

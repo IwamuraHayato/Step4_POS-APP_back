@@ -268,6 +268,7 @@ def save_file_to_blob(file: UploadFile) -> str:
 async def add_event(
     request: Request,
     eventName: str = Form(...),
+    area: Optional[str] = Form(None),
     startDate: str = Form(...),
     endDate: str = Form(...),
     startTime: str = Form(...),
@@ -294,6 +295,7 @@ async def add_event(
 
         event_data = [{
             "event_name": eventName,
+            "area": area,
             "start_date": startDate,
             "end_date": endDate,
             "start_at": startTime,
