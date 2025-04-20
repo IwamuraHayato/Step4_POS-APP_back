@@ -16,6 +16,8 @@ from db_control.connect_MySQL import engine
 from . import mymodels_MySQL
 from .mymodels_MySQL import Family, FamilyRelationship, User, UserTag, Tag, Store, Event, EventTag, TransactionType, PointTransaction, FavoriteEvent
 from typing import List
+from datetime import date
+
 
 Session = sessionmaker(bind=engine)
 
@@ -120,8 +122,10 @@ def getTagIdByName(tag_name):
 def insertEventTag(event_id, tag_ids):
     try:
         with session_scope() as session:
-            for tag_name in tag_ids:
-                tag_id = getTagIdByName(tag_name)
+            for tag_id in tag_ids:
+                existing_tag = session.query(Tag).filter_by(tag_id=tag_id).first()
+                if not existing_tag:
+                    raise Exception(f"存在しないtag_idです: {tag_id}")
                 event_tag = EventTag(event_id=event_id, tag_id=tag_id)
                 session.add(event_tag)
     except Exception as e:
@@ -209,7 +213,7 @@ def get_all_tags():
         print(f"タグ一覧取得エラー: {e}")
         raise
 
-def insert_favorite_event(event):
+def insert_favorite_event(user_id, event_id):
     """
     お気に入りイベントを登録
     event: FavoriteEvent (Pydanticモデル)
@@ -218,16 +222,16 @@ def insert_favorite_event(event):
         with session_scope() as session:
             # 重複チェック（同じuser_id + event_idの組み合わせがあるか）
             existing = session.query(FavoriteEvent).filter_by(
-                user_id=event.user_id,
-                event_id=event.event_id
+                user_id=user_id,
+                event_id=event_id
             ).first()
             if existing:
                 print("すでにお気に入り登録されています")
                 return  # or raise Exception / HTTPException
 
             new_favorite = FavoriteEvent(
-                user_id=event.user_id,
-                event_id=event.event_id
+                user_id=user_id,
+                event_id=event_id
             )
             session.add(new_favorite)
             print("お気に入りを登録しました")
@@ -281,3 +285,90 @@ def insertUserTag(user_id: int, tag_id: int):
     except Exception as e:
         print(f"UserTag 登録失敗: {e}")
         raise
+
+def get_favorite_event_ids(user_id):
+    with session_scope() as session:
+        result = session.query(FavoriteEvent.event_id).filter_by(user_id=user_id).distinct().all()
+        return [r.event_id for r in result]
+
+def get_favorite_events(user_id):
+    with session_scope() as session:
+        result = session.query(
+            FavoriteEvent.event_id,
+            Event.event_name,
+            Event.event_image_url,
+            Event.start_date,
+            Store.store_name
+        ).join(Event, FavoriteEvent.event_id == Event.event_id) \
+         .join(Store, Event.store_id == Store.store_id) \
+         .filter(FavoriteEvent.user_id == user_id) \
+         .distinct().all()
+
+        return [
+            {
+                "event_id": r.event_id,
+                "event_name": r.event_name,
+                "area": r.store_name,
+                "date": r.start_date.strftime("%Y/%m/%d"),
+                "image_url": r.event_image_url
+            }
+            for r in result
+        ]
+
+def search_events(keyword: str, date: str, tags: str):
+    with session_scope() as session:
+        query = session.query(Event, Store.store_name).join(Store, Event.store_id == Store.store_id)
+
+        if keyword:
+            query = query.filter(Event.event_name.contains(keyword) | Event.description.contains(keyword))
+
+        if date:
+            query = query.filter(Event.start_date == date)
+
+        if tags:
+            tag_list = tags.split(',')
+            query = query.join(EventTag, Event.event_id == EventTag.event_id)\
+                         .join(Tag, EventTag.tag_id == Tag.tag_id)\
+                         .filter(Tag.tag_name.in_(tag_list))
+
+        results = query.all()
+
+        return [{
+            "id": e.Event.event_id,
+            "title": e.Event.event_name,
+            "date": e.Event.start_date.strftime("%Y-%m-%d"),
+            "area": e.store_name,
+            "description": e.Event.description,
+            "imageUrl": e.Event.event_image_url or None,
+            "tags": [t.tag_name for t in session.query(Tag).join(EventTag).filter(EventTag.event_id == e.Event.event_id)]
+        } for e in results]
+    
+
+def get_upcoming_events():
+    today = date.today()
+    with session_scope() as session:
+        events = session.query(Event, Store.store_name)\
+            .join(Store, Event.store_id == Store.store_id)\
+            .filter(Event.start_date >= today)\
+            .order_by(Event.start_date.asc())\
+            .all()
+
+        event_list = []
+        for e in events:
+            tags = session.query(Tag.tag_name)\
+                .join(EventTag)\
+                .filter(EventTag.event_id == e.Event.event_id)\
+                .all()
+            tag_names = [t.tag_name for t in tags]
+
+            event_list.append({
+                "id": e.Event.event_id,
+                "title": e.Event.event_name,
+                "date": e.Event.start_date.strftime("%Y-%m-%d"),
+                "area": e.store_name,
+                "imageUrl": e.Event.event_image_url,
+                "description": e.Event.description,
+                "tags": tag_names,
+            })
+
+        return event_list

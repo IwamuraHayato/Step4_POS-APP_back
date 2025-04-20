@@ -344,7 +344,7 @@ async def add_event(
     startTime: str = Form(...),
     endTime: str = Form(...),
     description: str = Form(...),
-    information: str = Form(...),
+    information: Optional[str] = Form(None),
     store_id: int = Form(...),
     tags: List[str] = Form([]),
     flyer: Optional[UploadFile] = None,
@@ -448,14 +448,14 @@ class FavoriteEvent(BaseModel):
     area: str
     date: str
 
-@app.post("/favorites")
-def add_favorite(event: FavoriteEvent):
+@app.post("/favorites/{user_id}/{event_id}")
+def add_favorite(user_id: int, event_id: int):
     try:
-        crud.insert_favorite_event(event)
+        crud.insert_favorite_event(user_id, event_id)
         return {"message": "お気に入りに追加しました"}
     except Exception as e:
-        print("お気に入り登録エラー:", e)
-        raise HTTPException(status_code=500, detail="登録に失敗しました")
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.delete("/favorites/{user_id:int}/{event_id:int}")
 def remove_favorite(user_id: int, event_id: int):
@@ -465,3 +465,31 @@ def remove_favorite(user_id: int, event_id: int):
     except Exception as e:
         print("お気に入り解除エラー:", e)
         raise HTTPException(status_code=500, detail="解除に失敗しました")
+
+@app.get("/favorites/{user_id}")
+def get_favorite_events(user_id: int):
+    try:
+        favorites = crud.get_favorite_events(user_id)
+        return {"favorites": favorites}
+    except Exception as e:
+        print("お気に入り取得エラー:", e)
+        raise HTTPException(status_code=500, detail="取得に失敗しました")
+
+# イベント検索
+@app.get("/events/search")
+def search_events(keyword: str = '', date: str = '', tags: str = ''):
+    try:
+        result = crud.search_events(keyword, date, tags)
+        return {"events": result}
+    except Exception as e:
+        print("イベント検索エラー:", e)
+        raise HTTPException(status_code=500, detail="検索に失敗しました")
+
+@app.get("/events/upcoming")
+def get_upcoming_events():
+    try:
+        events = crud.get_upcoming_events()
+        return {"events": events}
+    except Exception as e:
+        print(f"エラー: {e}")
+        raise HTTPException(status_code=500, detail="イベント取得に失敗しました")
