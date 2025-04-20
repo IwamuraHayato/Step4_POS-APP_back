@@ -240,19 +240,15 @@ def register_step1(data: RegisterStep1Request, db: Session = Depends(get_db)):
 # 新規登録Step2
 class RegisterStep2Request(BaseModel):
     user_id: int
-    tags: List[str]
+    tags: List[int]
 
 from fastapi import Body
 
 @app.post("/register/step2")
-def register_step2(
-    user_id: int = Body(...),
-    tags: List[str] = Body(...)
-):
+def register_step2(data: RegisterStep2Request):
     try:
-        for tag_name in tags:
-            tag_id = crud.getTagIdByName(tag_name)
-            crud.insertUserTag(user_id=user_id, tag_id=tag_id)
+        for tag_id in data.tags:
+            crud.insertUserTag(user_id=data.user_id, tag_id=tag_id)
         return {"message": "Step2（興味タグ）登録完了"}
     except Exception as e:
         print(f"Step2 登録エラー: {e}")
