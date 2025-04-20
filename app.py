@@ -146,32 +146,30 @@ class SendCodeRequest(BaseModel):
     user_id: int  # フロントから送られてくるuser_idに対応
 
 @app.post("/auth/send-code")
-def send_login_code(data: SendCodeRequest, db: Session = Depends(get_db)):
+def send_verification_code(data: SendCodeRequest, db: Session = Depends(get_db)):
     try:
+        # ✅ user_idでユーザーを検索
+        user = db.query(mymodels_MySQL.User).filter_by(user_id=data.user_id).first()
+        
+        if not user:
+            raise HTTPException(status_code=404, detail="ユーザーが見つかりません")
+        
+        # ✅ 認証コードを生成して保存
         code = generate_verification_code()
         expiry = datetime.now() + timedelta(minutes=5)
 
-        user = db.query(mymodels_MySQL.User).filter_by(email=data.email).first()
-        if user:
-            user.verification_code = code
-            user.code_expiry = expiry
-        else:
-            user = mymodels_MySQL.User(
-                name="仮ユーザー",
-                name_kana="カリユーザー",
-                email=data.email,
-                birth_date=datetime(2000, 1, 1),
-                gender="U",
-                verification_code=code,
-                code_expiry=expiry
-            )
-            db.add(user)
+        user.verification_code = code
+        user.code_expiry = expiry
+
+        # ✅ このタイミングでメールアドレスを更新（Step1ではemail=None）
+        user.email=data.email
 
         db.commit()
 
         send_verification_email(data.email, code)
 
         return {"message": "認証コードを送信しました（テストコード: " + code + ")"}
+    
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"送信失敗: {str(e)}")
