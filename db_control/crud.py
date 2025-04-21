@@ -298,6 +298,7 @@ def get_favorite_events(user_id):
             Event.event_name,
             Event.event_image_url,
             Event.start_date,
+            Event.area,
             Store.store_name
         ).join(Event, FavoriteEvent.event_id == Event.event_id) \
          .join(Store, Event.store_id == Store.store_id) \
@@ -365,10 +366,44 @@ def get_upcoming_events():
                 "id": e.Event.event_id,
                 "title": e.Event.event_name,
                 "date": e.Event.start_date.strftime("%Y-%m-%d"),
-                "area": e.area,
+                "area": e.Event.area,
                 "imageUrl": e.Event.event_image_url,
                 "description": e.Event.description,
                 "tags": tag_names,
             })
 
         return event_list
+
+def get_event_detail_by_id(event_id: int):
+    try:
+        with session_scope() as session:
+            event = session.query(Event).filter(Event.event_id == event_id).first()
+            if not event:
+                return None
+
+            store_name = event.store.store_name if event.store else None
+
+            tag_names = [
+                t.tag_name for t in session.query(Tag.tag_name)
+                .join(EventTag)
+                .filter(EventTag.event_id == event.event_id)
+                .all()
+            ]
+
+            return {
+                "event_id": event.event_id,
+                "title": event.event_name,
+                "description": event.description,
+                "date": f"{event.start_date.strftime('%Y年%m月%d日')} 〜 {event.end_date.strftime('%Y年%m月%d日')}",
+                "time": f"{event.start_at.strftime('%H:%M')} 〜 {event.end_at.strftime('%H:%M')}",
+                "area": event.area,
+                "store_name": store_name,
+                "image_url": event.event_image_url,
+                "flyer_url": event.flyer_url,
+                "tags": tag_names,
+                "point_info": event.information
+            }
+
+    except Exception as e:
+        print(f"イベント詳細取得エラー: {e}")
+        raise

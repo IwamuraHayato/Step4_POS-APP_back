@@ -153,7 +153,7 @@ def get_popular_events(session, limit: int = 6) -> List[Dict]:
     query = text(f"""
     SELECT e.event_id, e.event_name, e.description, e.start_date, e.end_date,
            e.flyer_url, e.event_image_url, e.store_id,
-           s.store_name as area
+           s.store_name
     FROM Events e
     LEFT JOIN Stores s ON e.store_id = s.store_id
     WHERE e.start_date >= CURDATE()
@@ -262,7 +262,7 @@ def calculate_recommendations(user_id: int, top_n: int = 5) -> Dict[str, Any]:
             # 4. 類似ユーザーがお気に入り登録しているイベントを取得
             query = text("""
             SELECT DISTINCT e.event_id, e.event_name, e.description, e.start_date, e.end_date,
-                            e.flyer_url, e.event_image_url, e.store_id
+                            e.flyer_url, e.event_image_url, e.store_id, e.area
             FROM FavoriteEvents f
             JOIN Events e ON f.event_id = e.event_id
             WHERE f.user_id IN :similar_users

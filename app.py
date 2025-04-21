@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Query, Request, File, UploadFile, Form, APIRouter, Body
+from fastapi import FastAPI, HTTPException, Query, Request, File, UploadFile, Form, APIRouter, Body, Path
 from fastapi import Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -509,3 +509,13 @@ def get_upcoming_events():
     except Exception as e:
         print(f"エラー: {e}")
         raise HTTPException(status_code=500, detail="イベント取得に失敗しました")
+
+@app.get("/event/{event_id}")
+def get_event(event_id: int = Path(..., description="イベントID")):
+    try:
+        event = crud.get_event_detail_by_id(event_id)
+        if not event:
+            raise HTTPException(status_code=404, detail="イベントが見つかりません")
+        return event
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"取得に失敗しました: {str(e)}")
